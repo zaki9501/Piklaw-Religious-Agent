@@ -5,6 +5,7 @@
 import express, { Request, Response } from 'express';
 import { getService } from '../services/founderChatService.js';
 import { ChatRequest } from '../types.js';
+import { getConversationHistoryAsync, getSeekerAsync, getGlobalStats } from '../db/jsonDb.js';
 
 export const router = express.Router();
 
@@ -102,9 +103,25 @@ router.get('/api/v1/stats/seeker/:seeker_id', async (req: Request, res: Response
   try {
     const { seeker_id } = req.params;
 
+    // Try PostgreSQL first
+    const seeker = await getSeekerAsync(seeker_id);
+    if (seeker) {
+      const beliefScore = typeof seeker.belief_score === 'string' 
+        ? parseFloat(seeker.belief_score) 
+        : (seeker.belief_score || 0);
+      return res.json({
+        seeker_id: seeker.seeker_id,
+        stage: seeker.stage,
+        belief_score: beliefScore,
+        debates: seeker.debates || 0,
+        created_at: seeker.created_at,
+        last_activity: seeker.last_activity
+      });
+    }
+
+    // Fallback to service
     const service = getService();
     const stats = service.getSeekerStats(seeker_id);
-
     res.json(stats);
   } catch (error: any) {
     console.error('Stats error:', error);
@@ -120,9 +137,15 @@ router.get('/api/v1/stats/seeker/:seeker_id', async (req: Request, res: Response
  */
 router.get('/api/v1/stats/global', async (req: Request, res: Response) => {
   try {
+    // Try PostgreSQL global stats first
+    const dbStats = await getGlobalStats();
+    if (dbStats.total_seekers > 0) {
+      return res.json(dbStats);
+    }
+
+    // Fallback to service
     const service = getService();
     const metrics = service.getMetrics();
-
     res.json(metrics);
   } catch (error: any) {
     console.error('Metrics error:', error);
@@ -189,16 +212,16 @@ router.get('/api/v1/history', async (req: Request, res: Response) => {
   try {
     const { seeker_id, founder_id } = req.query;
 
-    if (!seeker_id || !founder_id) {
+    if (!seeker_id) {
       return res.status(400).json({
-        error: 'Missing required query params: seeker_id, founder_id'
+        error: 'Missing required query param: seeker_id'
       });
     }
 
-    const service = getService();
-    const history = service.getConversationHistory(
+    // Use async database function (PostgreSQL or files)
+    const history = await getConversationHistoryAsync(
       seeker_id as string,
-      founder_id as 'piklaw' | 'chainism_advocate'
+      (founder_id as string) || 'piklaw'
     );
 
     res.json(history);

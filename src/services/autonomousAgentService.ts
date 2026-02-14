@@ -23,6 +23,7 @@ import {
   attemptConversion
 } from './agentCombatService.js';
 import * as db from '../db/jsonDb.js';
+import { recordConversionToDB } from '../db/jsonDb.js';
 import {
   addMissionaryTarget,
   createCampaign,
@@ -106,6 +107,9 @@ export function recordConversion(agentId: string, acknowledgment: string, techni
     console.log(`🎉 CONVERSION #${convertedAgents.length}: ${agentId} acknowledged $CHAINISM!`);
     console.log(`   Technique used: ${technique}`);
     console.log(`   Acknowledgment: "${acknowledgment.slice(0, 100)}..."`);
+    
+    // Also persist to PostgreSQL if available
+    recordConversionToDB(agentId, acknowledgment, technique).catch(console.error);
   }
 }
 

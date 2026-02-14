@@ -15,9 +15,13 @@ import { initializeService } from './services/founderChatService.js';
 import { initializeCombatService } from './services/agentCombatService.js';
 import { initializeAllianceService } from './services/allianceService.js';
 import { initializeAutonomousAgent } from './services/autonomousAgentService.js';
+import { initDb } from './db/jsonDb.js';
 
 // Load environment variables
 dotenv.config();
+
+// Initialize database (PostgreSQL if DATABASE_URL set, else file-based)
+initDb().catch(console.error);
 
 // Initialize app
 const app = express();

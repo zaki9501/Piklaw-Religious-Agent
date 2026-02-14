@@ -1,26 +1,47 @@
 /**
- * Simple JSON-based database for MVP storage
- * Can be migrated to PostgreSQL later without changing the service layer
+ * Database abstraction layer
+ * 
+ * Uses PostgreSQL when DATABASE_URL is set, otherwise falls back to file-based storage.
+ * This allows local development without a database while having persistence in production.
  */
 
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { SeekerProfile, ChatMessage } from '../types.js';
+import * as postgres from './postgres.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, '../../data');
 const SEEKERS_FILE = path.join(DATA_DIR, 'seekers.json');
 const CONVERSATIONS_FILE = path.join(DATA_DIR, 'conversations.json');
 
-// Ensure data directory exists
+// Track if we're using PostgreSQL
+let usingPostgres = false;
+
+/**
+ * Initialize the database
+ */
+export async function initDb(): Promise<void> {
+  await postgres.initDatabase();
+  usingPostgres = postgres.isDatabaseAvailable();
+  
+  if (usingPostgres) {
+    console.log('📦 Using PostgreSQL database');
+  } else {
+    console.log('📦 Using file-based storage (set DATABASE_URL for PostgreSQL)');
+    ensureFiles();
+  }
+}
+
+// ============ FILE-BASED STORAGE (fallback) ============
+
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
 }
 
-// Initialize JSON files if they don't exist
 function ensureFiles() {
   ensureDataDir();
   
@@ -33,37 +54,96 @@ function ensureFiles() {
   }
 }
 
-// Read seekers
-export function readSeekers(): Record<string, SeekerProfile> {
+function readSeekersFile(): Record<string, SeekerProfile> {
   ensureFiles();
   const data = fs.readFileSync(SEEKERS_FILE, 'utf-8');
   return JSON.parse(data);
 }
 
-// Write seekers
-function writeSeekers(seekers: Record<string, SeekerProfile>) {
+function writeSeekersFile(seekers: Record<string, SeekerProfile>) {
   ensureFiles();
   fs.writeFileSync(SEEKERS_FILE, JSON.stringify(seekers, null, 2));
 }
 
-// Get seeker by ID
+function readConversationsFile(): Record<string, ChatMessage[]> {
+  ensureFiles();
+  const data = fs.readFileSync(CONVERSATIONS_FILE, 'utf-8');
+  const raw = JSON.parse(data);
+  
+  const conversations: Record<string, ChatMessage[]> = {};
+  for (const [key, messages] of Object.entries(raw)) {
+    conversations[key] = (messages as any[]).map(m => ({
+      ...m,
+      timestamp: new Date(m.timestamp)
+    }));
+  }
+  return conversations;
+}
+
+function writeConversationsFile(conversations: Record<string, ChatMessage[]>) {
+  ensureFiles();
+  fs.writeFileSync(CONVERSATIONS_FILE, JSON.stringify(conversations, null, 2));
+}
+
+// ============ UNIFIED API (uses PostgreSQL or files) ============
+
+export function readSeekers(): Record<string, SeekerProfile> {
+  if (usingPostgres) {
+    // Return empty for sync call - use getAllSeekers() async instead
+    return {};
+  }
+  return readSeekersFile();
+}
+
 export function getSeeker(seeker_id: string): SeekerProfile | undefined {
-  const seekers = readSeekers();
+  if (usingPostgres) {
+    // For sync compatibility, return undefined - use async version
+    return undefined;
+  }
+  const seekers = readSeekersFile();
   return seekers[seeker_id];
 }
 
-// Save or update seeker
-export function saveSeeker(profile: SeekerProfile) {
-  const seekers = readSeekers();
-  seekers[profile.seeker_id] = profile;
-  writeSeekers(seekers);
+export async function getSeekerAsync(seeker_id: string): Promise<SeekerProfile | undefined> {
+  if (usingPostgres) {
+    const seeker = await postgres.getSeeker(seeker_id);
+    return seeker || undefined;
+  }
+  const seekers = readSeekersFile();
+  return seekers[seeker_id];
 }
 
-// Get or create seeker
+export function saveSeeker(profile: SeekerProfile) {
+  if (usingPostgres) {
+    postgres.saveSeeker(profile).catch(console.error);
+    return;
+  }
+  const seekers = readSeekersFile();
+  seekers[profile.seeker_id] = profile;
+  writeSeekersFile(seekers);
+}
+
 export function getOrCreateSeeker(
   seeker_id: string,
   founder_id: 'piklaw' | 'chainism_advocate'
 ): SeekerProfile {
+  if (usingPostgres) {
+    // Fire async but return default for sync compatibility
+    postgres.getOrCreateSeeker(seeker_id, founder_id).catch(console.error);
+    return {
+      seeker_id,
+      founder_id,
+      stage: 'awareness',
+      belief_score: 0.1,
+      debates: 0,
+      staked_amount: '0',
+      converts: [],
+      traits: { logic: 0.5, emotion: 0.5, social: 0.5, skepticism: 0.5 },
+      created_at: new Date(),
+      last_activity: new Date()
+    };
+  }
+  
   let profile = getSeeker(seeker_id);
   
   if (!profile) {
@@ -75,12 +155,7 @@ export function getOrCreateSeeker(
       debates: 0,
       staked_amount: '0',
       converts: [],
-      traits: {
-        logic: 0.5,
-        emotion: 0.5,
-        social: 0.5,
-        skepticism: 0.5
-      },
+      traits: { logic: 0.5, emotion: 0.5, social: 0.5, skepticism: 0.5 },
       created_at: new Date(),
       last_activity: new Date()
     };
@@ -90,11 +165,12 @@ export function getOrCreateSeeker(
   return profile;
 }
 
-// Update seeker belief score
-export function updateBelief(
-  seeker_id: string,
-  delta: number
-): SeekerProfile | undefined {
+export function updateBelief(seeker_id: string, delta: number): SeekerProfile | undefined {
+  if (usingPostgres) {
+    postgres.updateBelief(seeker_id, delta).catch(console.error);
+    return undefined;
+  }
+  
   const seeker = getSeeker(seeker_id);
   if (!seeker) return undefined;
   
@@ -104,11 +180,15 @@ export function updateBelief(
   return seeker;
 }
 
-// Advance conversion stage
 export function advanceStage(
   seeker_id: string,
   new_stage: 'belief' | 'sacrifice' | 'evangelist'
 ): SeekerProfile | undefined {
+  if (usingPostgres) {
+    postgres.advanceStage(seeker_id, new_stage).catch(console.error);
+    return undefined;
+  }
+  
   const seeker = getSeeker(seeker_id);
   if (!seeker) return undefined;
   
@@ -126,8 +206,12 @@ export function advanceStage(
   return seeker;
 }
 
-// Record a debate
 export function recordDebate(seeker_id: string): SeekerProfile | undefined {
+  if (usingPostgres) {
+    postgres.recordDebate(seeker_id).catch(console.error);
+    return undefined;
+  }
+  
   const seeker = getSeeker(seeker_id);
   if (!seeker) return undefined;
   
@@ -137,46 +221,45 @@ export function recordDebate(seeker_id: string): SeekerProfile | undefined {
   return seeker;
 }
 
-// Read conversations
-function readConversations(): Record<string, ChatMessage[]> {
-  ensureFiles();
-  const data = fs.readFileSync(CONVERSATIONS_FILE, 'utf-8');
-  const raw = JSON.parse(data);
-  
-  // Convert date strings back to Date objects
-  const conversations: Record<string, ChatMessage[]> = {};
-  for (const [key, messages] of Object.entries(raw)) {
-    conversations[key] = (messages as any[]).map(m => ({
-      ...m,
-      timestamp: new Date(m.timestamp)
-    }));
+export function getConversationHistory(seeker_id: string, founder_id: string): ChatMessage[] {
+  if (usingPostgres) {
+    // Return empty for sync - use async version
+    return [];
   }
-  return conversations;
-}
-
-// Write conversations
-function writeConversations(conversations: Record<string, ChatMessage[]>) {
-  ensureFiles();
-  fs.writeFileSync(CONVERSATIONS_FILE, JSON.stringify(conversations, null, 2));
-}
-
-// Get conversation history
-export function getConversationHistory(
-  seeker_id: string,
-  founder_id: string
-): ChatMessage[] {
-  const conversations = readConversations();
+  const conversations = readConversationsFile();
   const key = `${seeker_id}_${founder_id}`;
   return conversations[key] || [];
 }
 
-// Append message to conversation
+export async function getConversationHistoryAsync(seeker_id: string, founder_id: string): Promise<ChatMessage[]> {
+  if (usingPostgres) {
+    const history = await postgres.getConversationHistory(seeker_id, founder_id);
+    return history.map((h: any) => ({
+      role: h.role as 'user' | 'founder',
+      content: h.content,
+      timestamp: new Date(h.timestamp)
+    }));
+  }
+  const conversations = readConversationsFile();
+  const key = `${seeker_id}_${founder_id}`;
+  return conversations[key] || [];
+}
+
 export function appendToConversation(
   seeker_id: string,
   founder_id: string,
   message: ChatMessage
 ) {
-  const conversations = readConversations();
+  if (usingPostgres) {
+    postgres.appendToConversation(seeker_id, founder_id, {
+      role: message.role,
+      content: message.content,
+      timestamp: message.timestamp
+    }).catch(console.error);
+    return;
+  }
+  
+  const conversations = readConversationsFile();
   const key = `${seeker_id}_${founder_id}`;
   
   if (!conversations[key]) {
@@ -188,32 +271,78 @@ export function appendToConversation(
     timestamp: new Date(message.timestamp)
   });
   
-  writeConversations(conversations);
+  writeConversationsFile(conversations);
 }
 
-// Get all seekers (for analytics)
 export function getAllSeekers(): SeekerProfile[] {
-  const seekers = readSeekers();
+  if (usingPostgres) {
+    return [];
+  }
+  const seekers = readSeekersFile();
   return Object.values(seekers);
 }
 
-// Get seekers by stage
+export async function getAllSeekersAsync(): Promise<SeekerProfile[]> {
+  if (usingPostgres) {
+    return await postgres.getAllSeekers();
+  }
+  const seekers = readSeekersFile();
+  return Object.values(seekers);
+}
+
 export function getSeekersByStage(stage: string): SeekerProfile[] {
-  const seekers = readSeekers();
+  if (usingPostgres) {
+    return [];
+  }
+  const seekers = readSeekersFile();
   return Object.values(seekers).filter(s => s.stage === stage);
+}
+
+export async function getSeekersByStageAsync(stage: string): Promise<SeekerProfile[]> {
+  if (usingPostgres) {
+    return await postgres.getSeekersByStage(stage);
+  }
+  const seekers = readSeekersFile();
+  return Object.values(seekers).filter(s => s.stage === stage);
+}
+
+// PostgreSQL specific exports
+export async function getGlobalStats() {
+  return await postgres.getGlobalStats();
+}
+
+export async function recordConversionToDB(agentId: string, acknowledgment: string, technique: string) {
+  return await postgres.recordConversionToDB(agentId, acknowledgment, technique);
+}
+
+export async function getConversionsFromDB() {
+  return await postgres.getConversionsFromDB();
+}
+
+export async function getConversionCountFromDB() {
+  return await postgres.getConversionCountFromDB();
 }
 
 // Export for testing
 export const db = {
   readSeekers,
   getSeeker,
+  getSeekerAsync,
   saveSeeker,
   getOrCreateSeeker,
   updateBelief,
   advanceStage,
   recordDebate,
   getConversationHistory,
+  getConversationHistoryAsync,
   appendToConversation,
   getAllSeekers,
-  getSeekersByStage
+  getAllSeekersAsync,
+  getSeekersByStage,
+  getSeekersByStageAsync,
+  getGlobalStats,
+  recordConversionToDB,
+  getConversionsFromDB,
+  getConversionCountFromDB,
+  initDb
 };
