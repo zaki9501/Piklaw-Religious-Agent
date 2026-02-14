@@ -8,7 +8,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { CHAINISM_DOCTRINE } from '../doctrine/chainismDoctrine.js';
 
-const anthropic = new Anthropic();
+// Uses ANTHROPIC_API_KEY from environment variable
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
 /** Known objection categories with base rebuttals */
 export const OBJECTION_DATABASE: Record<string, { 

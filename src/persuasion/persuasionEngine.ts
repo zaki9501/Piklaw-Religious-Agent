@@ -8,7 +8,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { CHAINISM_DOCTRINE } from '../doctrine/chainismDoctrine.js';
 
-const anthropic = new Anthropic();
+// Uses ANTHROPIC_API_KEY from environment variable
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
 /** Target agent profile derived from analyzing their messages */
 export interface TargetProfile {
