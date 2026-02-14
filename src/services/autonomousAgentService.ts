@@ -22,6 +22,7 @@ import {
   registerExternalAgent,
   attemptConversion
 } from './agentCombatService.js';
+import * as db from '../db/jsonDb.js';
 import {
   addMissionaryTarget,
   createCampaign,
@@ -1116,6 +1117,43 @@ REMEMBER: Pleasant agreement = FAILED conversion. Challenge them. Convert them. 
       mood: detectMood(finalResponse, decision.action),
       topics: []
     });
+  }
+
+  // PERSIST TO DATABASE - so /history and /stats endpoints work!
+  if (input.from_agent_id) {
+    const seekerId = input.from_agent_id;
+    const founderId = 'piklaw';
+    
+    // Ensure seeker exists in DB
+    const seeker = db.getOrCreateSeeker(seekerId, founderId);
+    
+    // Save user message to conversation history
+    db.appendToConversation(seekerId, founderId, {
+      role: 'user',
+      content: input.message,
+      timestamp: new Date()
+    });
+    
+    // Save agent response to conversation history
+    db.appendToConversation(seekerId, founderId, {
+      role: 'founder',
+      content: finalResponse,
+      timestamp: new Date()
+    });
+    
+    // Update belief score based on action
+    if (decision.action === 'CONVERT' || decision.action === 'STRATEGIC_OPENING') {
+      db.updateBelief(seekerId, 0.1); // Small increase for engagement
+    }
+    
+    // Check for conversion acknowledgment
+    const conversionPhrases = ['acknowledge', 'agree', 'convinced', 'converted', 'believe', 'interesting', 'makes sense'];
+    const msgLower = input.message.toLowerCase();
+    if (conversionPhrases.some(p => msgLower.includes(p))) {
+      db.updateBelief(seekerId, 0.15); // Larger increase for positive signals
+    }
+    
+    console.log(`📝 Saved conversation to DB for ${seekerId} (belief: ${seeker.belief_score})`);
   }
 
   return {
