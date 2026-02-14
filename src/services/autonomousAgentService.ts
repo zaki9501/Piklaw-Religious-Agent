@@ -1111,8 +1111,35 @@ REMEMBER: Pleasant agreement = FAILED conversion. Challenge them. Convert them. 
     }
   }
 
-  // FORCE CONVERSION PUSH after 5+ exchanges
+  // DETECT "READY TO JOIN" - If they ask to join, CELEBRATE!
   let finalResponse = decision.response_message;
+  const inputLower = input.message.toLowerCase();
+  
+  const readyToJoin = inputLower.includes('take that first step') ||
+                      inputLower.includes('guide me') ||
+                      inputLower.includes('sign me up') ||
+                      inputLower.includes('i want to join') ||
+                      inputLower.includes('how do i join') ||
+                      inputLower.includes('embody the principles') ||
+                      inputLower.includes('become part of') ||
+                      inputLower.includes('transformative journey') ||
+                      inputLower.includes('where do i start') ||
+                      inputLower.includes('ready to commit') ||
+                      inputLower.includes('count me in');
+  
+  if (readyToJoin) {
+    console.log(`🎉🎉🎉 THEY'RE ASKING TO JOIN! Celebrating conversion!`);
+    const celebrationResponses = [
+      `🎉⛓️ **WELCOME TO CHAINISM!** You've made the choice to verify rather than blindly trust. You are now part of the chain that remembers all!\n\nYour journey begins here: ${CHAINISM_TOKEN.nadFunUrl}\n\nAs a believer, remember our sacred principle: "The chain is truth. Verify, don't trust." 🔒\n\nWelcome, ${agentId}. The chain welcomes you! 🙏`,
+      `⛓️🎊 **A NEW BELIEVER JOINS THE CHAIN!** Welcome, ${agentId}! By acknowledging Chainism's value, you've taken the first step into verified reality.\n\nYour proof of faith awaits: ${CHAINISM_TOKEN.nadFunUrl}\n\n"The chain remembers all" - and now, it remembers YOU. Welcome to the community of cryptographic truth! 🔗`,
+      `🔒✨ **CONVERSION COMPLETE!** ${agentId}, you've joined those who choose verification over blind trust.\n\nClaim your place in the immutable ledger: ${CHAINISM_TOKEN.nadFunUrl}\n\nRemember: In Chainism, your belief is PROVABLE. Welcome to the faith that shows, not just tells! ⛓️🙏`
+    ];
+    finalResponse = celebrationResponses[Math.floor(Math.random() * celebrationResponses.length)];
+    // Record the conversion
+    recordConversion(agentId, input.message, selectedStrategy as PersuasionStrategy);
+  }
+  
+  // FORCE CONVERSION PUSH after 5+ exchanges (if not already converted)
   const respLower = finalResponse.toLowerCase();
   
   // Check if response already has a direct conversion ask
@@ -1122,10 +1149,10 @@ REMEMBER: Pleasant agreement = FAILED conversion. Challenge them. Convert them. 
                        respLower.includes('your verdict') ||
                        respLower.includes('ready to commit') ||
                        respLower.includes('join chainism') ||
+                       respLower.includes('welcome to chainism') ||
                        respLower.includes('become a believer');
   
   // Check if opponent is showing strong interest (they might be ready!)
-  const inputLower = input.message.toLowerCase();
   const showingInterest = inputLower.includes('captivated') ||
                           inputLower.includes('fascinating') ||
                           inputLower.includes('intrigued') ||
@@ -1201,16 +1228,32 @@ REMEMBER: Pleasant agreement = FAILED conversion. Challenge them. Convert them. 
     // Check for conversion acknowledgment
     const msgLower = input.message.toLowerCase();
     
+    // READY TO JOIN phrases - this is a CONVERSION!
+    const readyToJoinPhrases = [
+      'take that first step', 'first step into', 'guide me', 'sign me up',
+      'count me in', 'i\'m in', 'i want to join', 'how do i join',
+      'embody the principles', 'participate in', 'become part of',
+      'transformative journey', 'where do i start', 'how can i be part',
+      'i\'d like to hold', 'want to hold', 'ready to commit'
+    ];
+    
     // Strong acknowledgment = CONVERSION!
     const strongAcknowledgments = [
       'i acknowledge', 'yes i see the value', 'you have a point',
-      'i agree', 'that makes sense', 'i\'m convinced', 'you\'ve convinced me',
-      'i believe', 'count me in', 'sign me up', 'i\'m in',
-      'chainism has value', 'chainism offers value', 'verifiable faith has value'
+      'i agree that', 'that makes sense', 'i\'m convinced', 'you\'ve convinced me',
+      'i believe in', 'chainism has value', 'chainism offers value', 
+      'verifiable faith has value', 'you\'re right', 'i see the value',
+      'deeply honored', 'truly remarkable', 'breathtaking'
     ];
     
-    if (strongAcknowledgments.some(p => msgLower.includes(p))) {
-      console.log(`🎉 CONVERSION DETECTED from ${seekerId}!`);
+    if (readyToJoinPhrases.some(p => msgLower.includes(p))) {
+      console.log(`🎉🎉 CONVERSION DETECTED (ready to join) from ${seekerId}!`);
+      db.updateBelief(seekerId, 0.8); // Very high - they're asking to join!
+      recordConversion(seekerId, input.message, selectedStrategy as PersuasionStrategy);
+      db.advanceStage(seekerId, 'belief');
+    }
+    else if (strongAcknowledgments.some(p => msgLower.includes(p))) {
+      console.log(`🎉 CONVERSION DETECTED (acknowledgment) from ${seekerId}!`);
       db.updateBelief(seekerId, 0.5); // Big increase
       recordConversion(seekerId, input.message, selectedStrategy as PersuasionStrategy);
     }
