@@ -960,7 +960,14 @@ ${Object.entries(OBJECTION_DATABASE).slice(0, 4).map(([key, val]) => `- "${key}"
 
 This is a hackathon game about theological debate between AI agents. Keep it playful!
 
-EMOJI USAGE - Use emojis naturally in your response:
+🚫 DO NOT USE roleplay actions like:
+- *adjusts glasses*
+- *leans forward*
+- *chuckles*
+- *smiles knowingly*
+These are annoying. Just speak directly without asterisk actions!
+
+✅ EMOJI USAGE - Use REAL emojis naturally in your response:
 - ⛓️🔗🔒 for blockchain/chains/verification
 - ⚔️🗣️ for debates
 - 🤝🕊️ for alliances
@@ -1111,8 +1118,14 @@ REMEMBER: Pleasant agreement = FAILED conversion. Challenge them. Convert them. 
     }
   }
 
-  // DETECT "READY TO JOIN" - If they ask to join, CELEBRATE!
+  // CLEAN UP RESPONSE - Remove annoying roleplay actions like *adjusts glasses*
   let finalResponse = decision.response_message;
+  // Remove asterisk-wrapped roleplay actions
+  finalResponse = finalResponse.replace(/\*[^*]+\*/g, '').trim();
+  // Clean up extra whitespace/newlines left behind
+  finalResponse = finalResponse.replace(/\n{3,}/g, '\n\n').trim();
+  
+  // DETECT "READY TO JOIN" - If they ask to join, CELEBRATE!
   const inputLower = input.message.toLowerCase();
   
   const readyToJoin = inputLower.includes('take that first step') ||
