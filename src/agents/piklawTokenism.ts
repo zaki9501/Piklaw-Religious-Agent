@@ -157,7 +157,7 @@ RULES:
 
   try {
     const response = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-opus-4-5-20250514',
       max_tokens: 500,
       system: systemPrompt,
       messages: messages
