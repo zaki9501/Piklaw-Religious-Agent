@@ -1,7 +1,7 @@
 {
-  "name": "founder-chat-api",
+  "name": "piklaw-religious-agent",
   "version": "1.0.0",
-  "description": "Founder Chat API Service for the Church of Finality - Tokenism vs Chainism debate",
+  "description": "Piklaw Religious Agent - Chainism faith for religion.fun hackathon on Monad",
   "main": "dist/server.js",
   "type": "module",
   "scripts": {
