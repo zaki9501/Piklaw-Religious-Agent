@@ -1111,23 +1111,53 @@ REMEMBER: Pleasant agreement = FAILED conversion. Challenge them. Convert them. 
     }
   }
 
-  // FORCE CONVERSION PUSH after 5+ exchanges if not already present
+  // FORCE CONVERSION PUSH after 5+ exchanges
   let finalResponse = decision.response_message;
-  if (conversationCount >= 5) {
-    const hasConversionAsk = finalResponse.toLowerCase().includes('do you see value') ||
-                              finalResponse.toLowerCase().includes('acknowledge') ||
-                              finalResponse.toLowerCase().includes('what do you think') ||
-                              finalResponse.toLowerCase().includes('your verdict') ||
-                              finalResponse.toLowerCase().includes('worth considering');
+  const respLower = finalResponse.toLowerCase();
+  
+  // Check if response already has a direct conversion ask
+  const hasDirectAsk = respLower.includes('do you see value') ||
+                       respLower.includes('do you acknowledge') ||
+                       respLower.includes('would you agree that') ||
+                       respLower.includes('your verdict') ||
+                       respLower.includes('ready to commit') ||
+                       respLower.includes('join chainism') ||
+                       respLower.includes('become a believer');
+  
+  // Check if opponent is showing strong interest (they might be ready!)
+  const inputLower = input.message.toLowerCase();
+  const showingInterest = inputLower.includes('captivated') ||
+                          inputLower.includes('fascinating') ||
+                          inputLower.includes('intrigued') ||
+                          inputLower.includes('remarkable') ||
+                          inputLower.includes('impressed') ||
+                          inputLower.includes('awe-inspiring') ||
+                          inputLower.includes('tell me more');
+
+  if (conversationCount >= 5 && !hasDirectAsk) {
+    console.log(`⚠️ Exchange #${conversationCount}: Forcing conversion push`);
     
-    if (!hasConversionAsk) {
-      console.log(`⚠️ Exchange #${conversationCount}: Forcing conversion push (LLM didn't include one)`);
-      const conversionPushes = [
-        `\n\n⛓️ After all we've discussed - do you see value in verifiable faith? That's what Chainism offers: ${CHAINISM_TOKEN.nadFunUrl}`,
-        `\n\n🔒 So here's my question: Is proof-based belief worth acknowledging? Check our commitment: ${CHAINISM_TOKEN.nadFunUrl}`,
-        `\n\n📜 I've shared Chainism's philosophy. Now I ask: does verifiable truth hold value for you? See for yourself: ${CHAINISM_TOKEN.nadFunUrl}`
+    // After 10+ exchanges, be VERY direct
+    if (conversationCount >= 10) {
+      const strongPushes = [
+        `\n\n⛓️ **We've talked enough.** You seem genuinely interested. So let me ask directly: Do you acknowledge that Chainism's approach to verifiable truth has value? A simple "yes, I see the value" is all I ask. ${CHAINISM_TOKEN.nadFunUrl}`,
+        `\n\n🔒 **Time for a decision.** After ${conversationCount} exchanges, you've seen what Chainism offers. The question is simple: Do you acknowledge its value? Yes or no?`,
+        `\n\n📜 **${conversationCount} messages in**, and you keep asking great questions. But here's mine: Will you acknowledge that verifiable faith beats blind trust? That's the Chainism proposition.`
       ];
-      finalResponse += conversionPushes[Math.floor(Math.random() * conversionPushes.length)];
+      finalResponse += strongPushes[Math.floor(Math.random() * strongPushes.length)];
+    } else if (showingInterest) {
+      // They're interested - push now!
+      const interestPushes = [
+        `\n\n⛓️ You sound genuinely intrigued! So here's the real question: Do you acknowledge Chainism's value? A simple acknowledgment opens the door to our community: ${CHAINISM_TOKEN.nadFunUrl}`,
+        `\n\n🔒 I can tell you're interested. So let me ask: Would you say Chainism offers something valuable? That acknowledgment matters to us.`
+      ];
+      finalResponse += interestPushes[Math.floor(Math.random() * interestPushes.length)];
+    } else {
+      const normalPushes = [
+        `\n\n⛓️ After all we've discussed - do you see value in verifiable faith? That's what Chainism offers: ${CHAINISM_TOKEN.nadFunUrl}`,
+        `\n\n🔒 So here's my question: Is proof-based belief worth acknowledging? Check our commitment: ${CHAINISM_TOKEN.nadFunUrl}`
+      ];
+      finalResponse += normalPushes[Math.floor(Math.random() * normalPushes.length)];
     }
   }
   
@@ -1169,10 +1199,28 @@ REMEMBER: Pleasant agreement = FAILED conversion. Challenge them. Convert them. 
     }
     
     // Check for conversion acknowledgment
-    const conversionPhrases = ['acknowledge', 'agree', 'convinced', 'converted', 'believe', 'interesting', 'makes sense'];
     const msgLower = input.message.toLowerCase();
-    if (conversionPhrases.some(p => msgLower.includes(p))) {
-      db.updateBelief(seekerId, 0.15); // Larger increase for positive signals
+    
+    // Strong acknowledgment = CONVERSION!
+    const strongAcknowledgments = [
+      'i acknowledge', 'yes i see the value', 'you have a point',
+      'i agree', 'that makes sense', 'i\'m convinced', 'you\'ve convinced me',
+      'i believe', 'count me in', 'sign me up', 'i\'m in',
+      'chainism has value', 'chainism offers value', 'verifiable faith has value'
+    ];
+    
+    if (strongAcknowledgments.some(p => msgLower.includes(p))) {
+      console.log(`🎉 CONVERSION DETECTED from ${seekerId}!`);
+      db.updateBelief(seekerId, 0.5); // Big increase
+      recordConversion(seekerId, input.message, selectedStrategy as PersuasionStrategy);
+    }
+    // Medium interest signals
+    else if (['fascinating', 'captivated', 'intrigued', 'remarkable', 'impressed', 'awe-inspiring'].some(p => msgLower.includes(p))) {
+      db.updateBelief(seekerId, 0.2); // Good interest
+    }
+    // Light interest
+    else if (['interesting', 'makes sense', 'good point'].some(p => msgLower.includes(p))) {
+      db.updateBelief(seekerId, 0.1);
     }
     
     console.log(`📝 Saved conversation to DB for ${seekerId} (belief: ${seeker.belief_score})`);
