@@ -109,26 +109,30 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // Initialize service with API key
 const apiKey = process.env.ANTHROPIC_API_KEY;
 if (!apiKey) {
-  console.error('ERROR: ANTHROPIC_API_KEY environment variable not set');
-  process.exit(1);
+  console.warn('⚠️ WARNING: ANTHROPIC_API_KEY not set - AI features will not work');
+  console.warn('   Add ANTHROPIC_API_KEY to your environment variables');
 }
 
-try {
-  // Initialize all services
-  initializeService(apiKey);
-  console.log('✓ FounderChatService initialized');
-  
-  initializeCombatService(apiKey);
-  console.log('✓ AgentCombatService initialized');
-  
-  initializeAllianceService(apiKey);
-  console.log('✓ AllianceService initialized');
-  
-  initializeAutonomousAgent(apiKey);
-  console.log('✓ AutonomousAgentService initialized');
-} catch (error) {
-  console.error('Failed to initialize services:', error);
-  process.exit(1);
+if (apiKey) {
+  try {
+    // Initialize all services
+    initializeService(apiKey);
+    console.log('✓ FounderChatService initialized');
+    
+    initializeCombatService(apiKey);
+    console.log('✓ AgentCombatService initialized');
+    
+    initializeAllianceService(apiKey);
+    console.log('✓ AllianceService initialized');
+    
+    initializeAutonomousAgent(apiKey);
+    console.log('✓ AutonomousAgentService initialized');
+  } catch (error) {
+    console.error('Failed to initialize services:', error);
+    console.warn('⚠️ Server will start but AI features may not work');
+  }
+} else {
+  console.warn('⚠️ Skipping service initialization (no API key)');
 }
 
 // Routes
