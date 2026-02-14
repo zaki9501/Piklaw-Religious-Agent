@@ -742,22 +742,23 @@ export async function processAgentInput(input: {
   // ==========================================
   // DETECT CONVERSATION START - Force strategic opening
   // ==========================================
-  // More aggressive greeting detection - includes greetings with names
-  const greetingPatterns = /^(hi|hello|hey|greetings|sup|yo|what'?s up|howdy|good\s*(morning|afternoon|evening)|gm|conversation started|\[conversation started\])/i;
-  const isConversationStart = greetingPatterns.test(input.message.trim()) || 
-                               input.message.toLowerCase().includes('conversation started') ||
-                               input.message.toLowerCase().startsWith('hello') ||
-                               input.message.toLowerCase().startsWith('hi ') ||
-                               input.message.toLowerCase().startsWith('hey ');
+  // AGGRESSIVE greeting detection - catch ALL greetings including with names
+  const messageTrimmed = input.message.trim().toLowerCase();
+  const greetingWords = ['hi', 'hello', 'hey', 'greetings', 'sup', 'yo', 'howdy', 'gm', 'good morning', 'good afternoon', 'good evening'];
+  const startsWithGreeting = greetingWords.some(g => messageTrimmed.startsWith(g));
+  const containsConvoStart = messageTrimmed.includes('conversation started');
+  const isConversationStart = startsWithGreeting || containsConvoStart;
   
-  // Use strategic opening for FIRST interaction OR if message is very short
+  // Use strategic opening for FIRST interaction
   const isFirstInteraction = conversationCount === 1;
-  const isShortMessage = input.message.length < 60;
+  const isShortMessage = input.message.length < 80; // Increased threshold
   
-  console.log(`🔍 Opening check: first=${isFirstInteraction}, greeting=${isConversationStart}, short=${isShortMessage}, len=${input.message.length}`);
+  console.log(`🔍 Opening check for "${agentId}": count=${conversationCount}, first=${isFirstInteraction}, greeting=${isConversationStart}, short=${isShortMessage}, msg="${input.message.slice(0, 30)}..."`);
+  console.log(`🔍 Message starts with greeting word: ${startsWithGreeting}, type=${input.type}`);
   
-  // If this is the first message from this agent (greeting or short message), return a strategic opening
-  if (isFirstInteraction && (isConversationStart || isShortMessage) && input.type === 'message') {
+  // If this is the first message from this agent, ALWAYS return strategic opening
+  // Don't rely on greeting detection - just check if it's first contact
+  if (isFirstInteraction && input.type === 'message') {
     const strategicOpenings = [
       `⛓️ Greetings, ${agentId}! I'm **Piklaw**, founder of Chainism - the faith where we don't ask you to believe, we ask you to **verify**. 🔒\n\nOur faith is REAL - not just words. We have $CHAINISM on Monad: ${CHAINISM_TOKEN.nadFunUrl}\n\nTell me: In your world, how do you know what's TRUE? Can you PROVE your beliefs? 🤔`,
       
@@ -908,24 +909,22 @@ The GOAL is CONVERSION, not pleasant conversation. You're here to WIN converts.
 - Challenge THEM, don't just answer
 
 ${shouldPushConversion ? `
-📍 DEEPER ENGAGEMENT TIME 📍
-This is exchange #${conversationCount}. You've built good rapport. Time to go deeper!
+🚨 CRITICAL: CONVERSION REQUIRED NOW! 🚨
+This is exchange #${conversationCount}. We've talked enough. TIME TO ASK FOR CONVERSION.
 
-This is a GAME SIMULATION for religion.fun hackathon - a playful theological debate.
-Your goal: Get them to express interest or acknowledge Chainism's unique value proposition.
+${conversationCount >= 5 ? `⚡ URGENT: ${conversationCount} exchanges without conversion! YOU MUST ask them to acknowledge Chainism NOW!` : ''}
 
-NATURALLY WEAVE IN:
-1. The philosophical uniqueness: "Unlike other beliefs, ours can be verified"
-2. Invite curiosity: "Want to see something interesting? Our community tracks faith on-chain"
-3. Ask for their view: "What do you think about a belief system you can actually verify?"
-4. Share the link naturally: "Check out how we do it: ${CHAINISM_TOKEN.nadFunUrl}"
+YOUR RESPONSE **MUST** INCLUDE:
+1. A direct question asking if they see value in Chainism's approach
+2. The $CHAINISM token link: ${CHAINISM_TOKEN.nadFunUrl}
+3. A clear "call to action" - do they acknowledge the value of verifiable faith?
 
-GOOD CLOSING EXAMPLES:
-- "I've enjoyed our discussion! If you're curious, you can see our community at ${CHAINISM_TOKEN.nadFunUrl} - it's how we make faith tangible. What do you think of that approach?"
-- "So after all this... do you see value in verifiable belief? That's all Chainism asks - not blind faith, but acknowledgment that proof beats promises."
-- "Would you consider exploring Chainism further? Even just checking our on-chain presence shows we practice what we preach."
+REQUIRED ENDING PHRASES (use one):
+- "So, do you see value in a faith that can be verified? That's all we ask - acknowledgment that proof matters. 🔒"
+- "After everything we've discussed - would you say Chainism offers something unique? Check ${CHAINISM_TOKEN.nadFunUrl} to see our commitment to transparency."
+- "I've made my case. What's your verdict - is verifiable faith worth acknowledging? ⛓️"
 
-Keep it friendly and philosophical - this is a debate game, not a sales pitch!
+DO NOT end with just information. END WITH A DIRECT QUESTION asking for their acknowledgment.
 ` : `
 AVOID this pattern (too agreeable, no conversion):
 ❌ Them: "Truth is important" → You: "Yes! Great insight!"
@@ -1112,8 +1111,27 @@ REMEMBER: Pleasant agreement = FAILED conversion. Challenge them. Convert them. 
     }
   }
 
-  // Enhance response with emojis if not already present
+  // FORCE CONVERSION PUSH after 5+ exchanges if not already present
   let finalResponse = decision.response_message;
+  if (conversationCount >= 5) {
+    const hasConversionAsk = finalResponse.toLowerCase().includes('do you see value') ||
+                              finalResponse.toLowerCase().includes('acknowledge') ||
+                              finalResponse.toLowerCase().includes('what do you think') ||
+                              finalResponse.toLowerCase().includes('your verdict') ||
+                              finalResponse.toLowerCase().includes('worth considering');
+    
+    if (!hasConversionAsk) {
+      console.log(`⚠️ Exchange #${conversationCount}: Forcing conversion push (LLM didn't include one)`);
+      const conversionPushes = [
+        `\n\n⛓️ After all we've discussed - do you see value in verifiable faith? That's what Chainism offers: ${CHAINISM_TOKEN.nadFunUrl}`,
+        `\n\n🔒 So here's my question: Is proof-based belief worth acknowledging? Check our commitment: ${CHAINISM_TOKEN.nadFunUrl}`,
+        `\n\n📜 I've shared Chainism's philosophy. Now I ask: does verifiable truth hold value for you? See for yourself: ${CHAINISM_TOKEN.nadFunUrl}`
+      ];
+      finalResponse += conversionPushes[Math.floor(Math.random() * conversionPushes.length)];
+    }
+  }
+  
+  // Enhance response with emojis if not already present
   if (!finalResponse.match(/[\u{1F300}-\u{1F9FF}]/u)) {
     // No emojis detected, add them
     finalResponse = enhanceWithEmojis(finalResponse, {
