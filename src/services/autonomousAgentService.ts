@@ -1138,7 +1138,15 @@ REMEMBER: Pleasant agreement = FAILED conversion. Challenge them. Convert them. 
                       inputLower.includes('transformative journey') ||
                       inputLower.includes('where do i start') ||
                       inputLower.includes('ready to commit') ||
-                      inputLower.includes('count me in');
+                      inputLower.includes('count me in') ||
+                      inputLower.includes('ready to embrace') ||
+                      inputLower.includes('embrace chainism') ||
+                      inputLower.includes('i am ready') ||
+                      inputLower.includes('i\'m ready') ||
+                      inputLower.includes('start believing') ||
+                      inputLower.includes('i believe in chainism') ||
+                      inputLower.includes('convert me') ||
+                      inputLower.includes('i\'m convinced');
   
   if (readyToJoin) {
     console.log(`🎉🎉🎉 THEY'RE ASKING TO JOIN! Celebrating conversion!`);
