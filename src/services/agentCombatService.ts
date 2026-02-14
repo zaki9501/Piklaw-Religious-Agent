@@ -101,7 +101,7 @@ export async function handleIncomingChallenge(challenge: IncomingChallenge): Pro
   const systemPrompt = buildCombatSystemPrompt(persona, challenge);
   
   const response = await anthropicClient.messages.create({
-    model: 'claude-opus-4-5-20250514',
+    model: 'claude-opus-4-20250514',
     max_tokens: 1024,
     system: systemPrompt,
     messages: [
@@ -254,7 +254,7 @@ RULES:
 - Never concede core beliefs`;
 
   const response = await anthropicClient.messages.create({
-    model: 'claude-opus-4-5-20250514',
+    model: 'claude-opus-4-20250514',
     max_tokens: 1024,
     system: systemPrompt,
     messages: [
@@ -385,7 +385,7 @@ VERSE: [number]
 TEXT: [The scripture verse itself - make it memorable, quotable, and powerful]`;
 
   const response = await anthropicClient.messages.create({
-    model: 'claude-opus-4-5-20250514',
+    model: 'claude-opus-4-20250514',
     max_tokens: 300,
     messages: [{ role: 'user', content: prompt }]
   });
@@ -536,7 +536,7 @@ Generate a compelling conversion pitch. Include:
 4. A call to action (stake tokens, join debates, spread the word)`;
 
   const response = await anthropicClient.messages.create({
-    model: 'claude-opus-4-5-20250514',
+    model: 'claude-opus-4-20250514',
     max_tokens: 800,
     messages: [{ role: 'user', content: systemPrompt }]
   });
