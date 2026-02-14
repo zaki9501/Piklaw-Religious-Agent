@@ -15,7 +15,6 @@ import {
   initiateDebate,
   generateDebateResponse,
   concludeDebate,
-  recordConversion,
   generateDynamicScripture,
   getConversionMetrics,
   getActiveDebates,
