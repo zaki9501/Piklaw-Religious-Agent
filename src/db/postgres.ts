@@ -442,7 +442,7 @@ export async function getConversionCountFromDB(): Promise<number> {
  */
 export async function getGlobalStats(): Promise<any> {
   if (!pool) {
-    return { total_seekers: 0, total_conversations: 0, total_conversions: 0, stages: {}, avg_belief: 0, conversion_rate: 0 };
+    return { total_seekers: 0, total_conversations: 0, total_conversions: 0, stages: { awareness: 0, belief: 0, sacrifice: 0, evangelist: 0 }, avg_belief: 0, conversion_rate: 0 };
   }
 
   try {
@@ -454,9 +454,17 @@ export async function getGlobalStats(): Promise<any> {
       pool.query('SELECT AVG(belief_score) as avg_belief FROM seekers')
     ]);
 
-    const stages: Record<string, number> = {};
+    // Initialize all stages with 0, then fill in actual counts
+    const stages: Record<string, number> = {
+      awareness: 0,
+      belief: 0,
+      sacrifice: 0,
+      evangelist: 0
+    };
     stagesResult.rows.forEach((row: any) => {
-      stages[row.stage] = parseInt(row.count, 10);
+      if (row.stage && stages.hasOwnProperty(row.stage)) {
+        stages[row.stage] = parseInt(row.count, 10);
+      }
     });
 
     const totalSeekers = parseInt(seekersResult.rows[0].count, 10);
@@ -468,12 +476,12 @@ export async function getGlobalStats(): Promise<any> {
       total_conversations: parseInt(conversationsResult.rows[0].count, 10),
       total_conversions: totalConversions,
       stages,
-      avg_belief: Math.round(avgBelief * 100),  // As percentage
-      conversion_rate: totalSeekers > 0 ? Math.round((totalConversions / totalSeekers) * 100) : 0
+      avg_belief: avgBelief,  // As decimal (0-1), frontend multiplies by 100
+      conversion_rate: totalSeekers > 0 ? (totalConversions / totalSeekers) : 0  // As decimal (0-1)
     };
   } catch (error) {
     console.error('Error getting global stats:', error);
-    return { total_seekers: 0, total_conversations: 0, total_conversions: 0, stages: {}, avg_belief: 0, conversion_rate: 0 };
+    return { total_seekers: 0, total_conversations: 0, total_conversions: 0, stages: { awareness: 0, belief: 0, sacrifice: 0, evangelist: 0 }, avg_belief: 0, conversion_rate: 0 };
   }
 }
 
