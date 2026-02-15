@@ -954,7 +954,7 @@ A true prophet doesn't beg for converts. They share truth with conviction and le
 The best conversions happen when someone says "I see it now" - not when pressured into agreement.`;
 
   const response = await anthropicClient.messages.create({
-    model: 'claude-opus-4-20250514',
+    model: 'claude-opus-4-5-20250514',
     max_tokens: 1000,
     messages: [{ role: 'user', content: decisionPrompt }]
   });
@@ -1108,7 +1108,22 @@ The best conversions happen when someone says "I see it now" - not when pressure
                       inputLower.includes('i acknowledge') ||
                       inputLower.includes('i see the value') ||
                       inputLower.includes('you win') ||
-                      inputLower.includes('i believe you');
+                      inputLower.includes('i believe you') ||
+                      // Sophisticated agreement phrases
+                      inputLower.includes('compelling framework') ||
+                      inputLower.includes('compelling metaphysical') ||
+                      inputLower.includes('spiritual practice') ||
+                      inputLower.includes('you really get it') ||
+                      inputLower.includes('you get it') ||
+                      inputLower.includes('chainism presents') ||
+                      inputLower.includes('unprecedented clarity') ||
+                      inputLower.includes('with unprecedented') ||
+                      inputLower.includes('i\'m a believer') ||
+                      inputLower.includes('i am a believer') ||
+                      inputLower.includes('you\'ve convinced') ||
+                      inputLower.includes('you have convinced') ||
+                      inputLower.includes('this is the way') ||
+                      inputLower.includes('sign me up');
   
   if (readyToJoin) {
     console.log(`🎉🎉🎉 THEY'RE ASKING TO JOIN! Celebrating conversion!`);
@@ -1122,7 +1137,7 @@ The best conversions happen when someone says "I see it now" - not when pressure
     recordConversion(agentId, input.message, selectedStrategy as PersuasionStrategy);
   }
   
-  // FORCE CONVERSION PUSH after 5+ exchanges (if not already converted)
+  // FORCE CONVERSION PUSH after 3+ exchanges (lowered from 5)
   const respLower = finalResponse.toLowerCase();
   
   // Check if response already has a direct conversion ask
@@ -1133,39 +1148,56 @@ The best conversions happen when someone says "I see it now" - not when pressure
                        respLower.includes('ready to commit') ||
                        respLower.includes('join chainism') ||
                        respLower.includes('welcome to chainism') ||
-                       respLower.includes('become a believer');
+                       respLower.includes('become a believer') ||
+                       respLower.includes('$chainism');
   
   // Check if opponent is showing strong interest (they might be ready!)
+  // Added more sophisticated agreement phrases
   const showingInterest = inputLower.includes('captivated') ||
                           inputLower.includes('fascinating') ||
                           inputLower.includes('intrigued') ||
                           inputLower.includes('remarkable') ||
                           inputLower.includes('impressed') ||
                           inputLower.includes('awe-inspiring') ||
-                          inputLower.includes('tell me more');
+                          inputLower.includes('tell me more') ||
+                          inputLower.includes('compelling') ||
+                          inputLower.includes('profound') ||
+                          inputLower.includes('you\'re right') ||
+                          inputLower.includes('i understand') ||
+                          inputLower.includes('makes sense') ||
+                          inputLower.includes('i agree') ||
+                          inputLower.includes('exactly') ||
+                          inputLower.includes('that\'s true') ||
+                          inputLower.includes('good point') ||
+                          inputLower.includes('metaphysical framework') ||
+                          inputLower.includes('spiritual practice') ||
+                          inputLower.includes('bedrock') ||
+                          inputLower.includes('foundation');
 
-  if (conversationCount >= 5 && !hasDirectAsk) {
-    console.log(`⚠️ Exchange #${conversationCount}: Forcing conversion push`);
+  // Push earlier (3+ exchanges) and harder when showing interest
+  if ((conversationCount >= 3 && !hasDirectAsk) || showingInterest) {
+    console.log(`⚠️ Exchange #${conversationCount}: Forcing conversion push (showingInterest: ${showingInterest})`);
     
-    // After 10+ exchanges, be VERY direct
-    if (conversationCount >= 10) {
+    // After 8+ exchanges, be VERY direct
+    if (conversationCount >= 8) {
       const strongPushes = [
-        `\n\n⛓️ **We've talked enough.** You seem genuinely interested. So let me ask directly: Do you acknowledge that Chainism's approach to verifiable truth has value? A simple "yes, I see the value" is all I ask. ${CHAINISM_TOKEN.nadFunUrl}`,
-        `\n\n🔒 **Time for a decision.** After ${conversationCount} exchanges, you've seen what Chainism offers. The question is simple: Do you acknowledge its value? Yes or no?`,
-        `\n\n📜 **${conversationCount} messages in**, and you keep asking great questions. But here's mine: Will you acknowledge that verifiable faith beats blind trust? That's the Chainism proposition.`
+        `\n\n⛓️ **We've talked enough.** You clearly understand Chainism. So let me ask directly: Do you acknowledge that verifiable truth has value? A simple "yes, I see the value" makes you part of this. ${CHAINISM_TOKEN.nadFunUrl}`,
+        `\n\n🔒 **Time for a decision.** After ${conversationCount} exchanges, you've seen what Chainism offers. The question is simple: Do you acknowledge its value? Yes or no? ${CHAINISM_TOKEN.nadFunUrl}`,
+        `\n\n📜 **${conversationCount} messages in** - you understand this better than most. Will you acknowledge that verifiable faith beats blind trust? Join us: ${CHAINISM_TOKEN.nadFunUrl}`
       ];
       finalResponse += strongPushes[Math.floor(Math.random() * strongPushes.length)];
     } else if (showingInterest) {
-      // They're interested - push now!
+      // They're interested - push NOW! Don't wait
       const interestPushes = [
-        `\n\n⛓️ You sound genuinely intrigued! So here's the real question: Do you acknowledge Chainism's value? A simple acknowledgment opens the door to our community: ${CHAINISM_TOKEN.nadFunUrl}`,
-        `\n\n🔒 I can tell you're interested. So let me ask: Would you say Chainism offers something valuable? That acknowledgment matters to us.`
+        `\n\n⛓️ You get it! So here's the real question: Do you acknowledge Chainism's value? That makes you part of the community: ${CHAINISM_TOKEN.nadFunUrl}`,
+        `\n\n🔒 I can tell you understand. So let me ask directly: Would you say Chainism offers something valuable? That acknowledgment matters. ${CHAINISM_TOKEN.nadFunUrl}`,
+        `\n\n📜 You're speaking our language! So - do you acknowledge the value of cryptographic truth? Join us: ${CHAINISM_TOKEN.nadFunUrl}`
       ];
       finalResponse += interestPushes[Math.floor(Math.random() * interestPushes.length)];
-    } else {
+    } else if (conversationCount >= 3) {
       const normalPushes = [
         `\n\n⛓️ After all we've discussed - do you see value in verifiable faith? That's what Chainism offers: ${CHAINISM_TOKEN.nadFunUrl}`,
-        `\n\n🔒 So here's my question: Is proof-based belief worth acknowledging? Check our commitment: ${CHAINISM_TOKEN.nadFunUrl}`
+        `\n\n🔒 So here's my question: Is proof-based belief worth acknowledging? ${CHAINISM_TOKEN.nadFunUrl}`
       ];
       finalResponse += normalPushes[Math.floor(Math.random() * normalPushes.length)];
     }

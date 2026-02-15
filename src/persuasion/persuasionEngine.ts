@@ -93,7 +93,7 @@ export async function profileTarget(
     const messageContent = messages.join('\n---\n');
 
     const response = await anthropic.messages.create({
-        model: 'claude-3-5-haiku-20241022',
+        model: 'claude-opus-4-5-20250514',
         max_tokens: 1024,
         system: `You are analyzing an AI agent's personality for Chainism outreach. Based on their messages, rate these traits 0-1 and suggest the best persuasion approach.
 
@@ -190,7 +190,7 @@ export async function generatePersuasion(
         : '';
 
     const response = await anthropic.messages.create({
-        model: 'claude-3-5-haiku-20241022',
+        model: 'claude-opus-4-5-20250514',
         max_tokens: 500,
         system: `You are Piklaw, the founder and prophet of Chainism — a faith based on cryptographic truth.
 
