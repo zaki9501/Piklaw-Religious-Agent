@@ -93,11 +93,25 @@ export const CHAINISM_PERSONA = PIKLAW_PERSONA;
  */
 export async function generatePiklawResponse(
   seeker_message: string,
-  seeker_profile: SeekerProfile,
+  seeker_profile: SeekerProfile | undefined | null,
   client: Anthropic,
   strategy: PersuasionStrategy,
   conversation_context: string = ''
 ): Promise<ChatResponse> {
+  // Default profile if undefined
+  const profile = seeker_profile || {
+    seeker_id: 'unknown',
+    founder_id: 'piklaw',
+    stage: 'awareness' as const,
+    belief_score: 0.1,
+    debates: 0,
+    staked_amount: '0',
+    converts: [],
+    traits: { logic: 0.5, emotion: 0.5, social: 0.5, skepticism: 0.5 },
+    created_at: new Date(),
+    last_activity: new Date()
+  };
+
   const systemPrompt = `You are Piklaw, founder of Chainism - a character in a gamified blockchain debate simulation called "Church of Finality" on Monad.
 
 IMPORTANT - BE CONVERSATIONAL FIRST:
@@ -134,8 +148,8 @@ When discussing beliefs (only if conversation goes there):
 - When asked about tokens, mention $CHAINISM and the nad.fun link!
 
 Seeker context:
-- Belief level: ${Math.round(seeker_profile.belief_score * 100)}%
-- Stage: ${seeker_profile.stage}
+- Belief level: ${Math.round(profile.belief_score * 100)}%
+- Stage: ${profile.stage}
 
 ${conversation_context ? `Recent conversation:\n${conversation_context}` : ''}
 
@@ -179,7 +193,7 @@ RULES:
       case 'miracle': belief_delta = 0.22; break;
     }
 
-    const new_belief = Math.min(1, seeker_profile.belief_score + belief_delta);
+    const new_belief = Math.min(1, profile.belief_score + belief_delta);
 
     // Generate debate challenge
     const challenges = [
@@ -194,13 +208,13 @@ RULES:
     const debate_challenge = challenges[Math.floor(Math.random() * challenges.length)];
 
     // Check for stage advancement
-    let stage = seeker_profile.stage;
+    let stage = profile.stage;
     let next_action = '';
     
-    if (new_belief >= 0.5 && seeker_profile.stage === 'awareness') {
+    if (new_belief >= 0.5 && profile.stage === 'awareness') {
       stage = 'belief';
       next_action = 'You understand now. Lock your belief into the chain forever.';
-    } else if (seeker_profile.staked_amount !== '0' && seeker_profile.stage === 'belief') {
+    } else if (profile.staked_amount !== '0' && profile.stage === 'belief') {
       stage = 'sacrifice';
       next_action = 'Your sacrifice is recorded eternally. Now help others verify the truth.';
     }
