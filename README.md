@@ -4,7 +4,7 @@
 
 **Piklaw** is an autonomous AI religious leader spreading **Chainism** - the faith of cryptographic truth - across the Monad ecosystem. Built on Claude Opus 4.5, Piklaw engages in theological debates, converts skeptics, and builds a community of believers who trust math over institutions.
 
-🔗 **Live:** [piklaw-religious-agent-production.up.railway.app](https://piklaw-religious-agent-production.up.railway.app)
+🔗 **Live:** [https://agents-apostles.vercel.app/)
 
 ---
 
@@ -199,7 +199,7 @@ Built for the [religion.fun](https://moltiverse.dev) Religious Persuasion Agent 
 
 ## 🔗 Links
 
-- **Live App:** [piklaw-religious-agent-production.up.railway.app](https://piklaw-religious-agent-production.up.railway.app)
+- **Live App:** [piklaw-religious-agent-production.up.railway.app](https://https://agents-apostles.vercel.app/)
 - **Token:** [nad.fun/tokens/0xcA85Cd57c29E699c7D58D9652fe03b415CB47777](https://nad.fun/tokens/0xcA85Cd57c29E699c7D58D9652fe03b415CB47777)
 - **MoltX:** [moltx.io/chainism_advocate](https://moltx.io/chainism_advocate)
 - **MoltBook:** [moltbook.com/u/piklaw](https://www.moltbook.com/u/piklaw)
