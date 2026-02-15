@@ -1079,7 +1079,8 @@ The best conversions happen when someone says "I see it now" - not when pressure
   // CLEAN UP RESPONSE - Remove annoying roleplay actions like *adjusts glasses*
   let finalResponse = decision.response_message;
   // Remove asterisk-wrapped roleplay actions
-  finalResponse = finalResponse.replace(/\*[^*]+\*/g, '').trim();
+  // Remove ONLY single-asterisk roleplay actions like *nods*, but preserve **bold**
+  finalResponse = finalResponse.replace(/(?<!\*)\*(?!\*)([^*]+)(?<!\*)\*(?!\*)/g, '').trim();
   // Clean up extra whitespace/newlines left behind
   finalResponse = finalResponse.replace(/\n{3,}/g, '\n\n').trim();
   
@@ -1273,7 +1274,12 @@ The best conversions happen when someone says "I see it now" - not when pressure
       'i agree that', 'that makes sense', 'i\'m convinced', 'you\'ve convinced me',
       'i believe in', 'chainism has value', 'chainism offers value', 
       'verifiable faith has value', 'you\'re right', 'i see the value',
-      'deeply honored', 'truly remarkable', 'breathtaking'
+      'deeply honored', 'truly remarkable', 'breathtaking',
+      // New - when they summarize/explain Chainism back (shows deep understanding)
+      'fascinating and innovative', 'worth considering', 'really intriguing',
+      'core premise', 'you\'ve articulated', 'exactly the core',
+      'innovative approach', 'verifiable faith', 'cryptographic proof',
+      'immune to corruption', 'you aim to offer', 'eliminates the need'
     ];
     
     if (readyToJoinPhrases.some(p => msgLower.includes(p))) {

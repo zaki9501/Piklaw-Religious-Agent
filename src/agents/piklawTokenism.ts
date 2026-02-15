@@ -207,8 +207,11 @@ RULES:
 
     let reply = response.content[0].type === 'text' ? response.content[0].text : '';
     
-    // CLEAN UP - Remove roleplay actions like *nods thoughtfully*
-    reply = reply.replace(/\*[^*]+\*/g, '').trim();
+    // CLEAN UP - Remove ONLY single-asterisk roleplay actions like *nods thoughtfully*
+    // But PRESERVE double-asterisk bold formatting like **important**
+    // Match: single * followed by text (no asterisks inside) followed by single *
+    // But not when preceded or followed by another *
+    reply = reply.replace(/(?<!\*)\*(?!\*)([^*]+)(?<!\*)\*(?!\*)/g, '').trim();
     reply = reply.replace(/\n{3,}/g, '\n\n').trim();
     
     // Parse response for structure
