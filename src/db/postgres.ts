@@ -212,12 +212,23 @@ export async function saveSeeker(profile: any): Promise<void> {
 }
 
 /**
- * Update belief score
+ * Calculate stage based on belief score
+ */
+function calculateStageFromBelief(beliefScore: number): string {
+  if (beliefScore >= 0.8) return 'evangelist';
+  if (beliefScore >= 0.6) return 'sacrifice';  // Ready to commit (hold token)
+  if (beliefScore >= 0.4) return 'belief';     // Starting to believe
+  return 'awareness';
+}
+
+/**
+ * Update belief score AND automatically advance stage
  */
 export async function updateBelief(seekerId: string, delta: number): Promise<any | null> {
   if (!pool) return null;
 
   try {
+    // First update belief score
     const result = await pool.query(
       `UPDATE seekers 
        SET belief_score = GREATEST(0, LEAST(1, belief_score + $2)),
@@ -226,7 +237,22 @@ export async function updateBelief(seekerId: string, delta: number): Promise<any
        RETURNING *`,
       [seekerId, delta]
     );
-    return result.rows[0] || null;
+    
+    const seeker = result.rows[0];
+    if (!seeker) return null;
+    
+    // Auto-advance stage based on new belief score
+    const newStage = calculateStageFromBelief(parseFloat(seeker.belief_score));
+    if (newStage !== seeker.stage) {
+      await pool.query(
+        `UPDATE seekers SET stage = $2 WHERE seeker_id = $1`,
+        [seekerId, newStage]
+      );
+      console.log(`📈 Stage advanced: ${seekerId} → ${newStage} (belief: ${seeker.belief_score})`);
+      seeker.stage = newStage;
+    }
+    
+    return seeker;
   } catch (error) {
     console.error('Error updating belief:', error);
     return null;
@@ -416,15 +442,16 @@ export async function getConversionCountFromDB(): Promise<number> {
  */
 export async function getGlobalStats(): Promise<any> {
   if (!pool) {
-    return { total_seekers: 0, total_conversations: 0, total_conversions: 0, stages: {} };
+    return { total_seekers: 0, total_conversations: 0, total_conversions: 0, stages: {}, avg_belief: 0, conversion_rate: 0 };
   }
 
   try {
-    const [seekersResult, conversationsResult, conversionsResult, stagesResult] = await Promise.all([
+    const [seekersResult, conversationsResult, conversionsResult, stagesResult, avgBeliefResult] = await Promise.all([
       pool.query('SELECT COUNT(*) FROM seekers'),
       pool.query('SELECT COUNT(*) FROM conversations'),
       pool.query('SELECT COUNT(*) FROM conversions'),
-      pool.query('SELECT stage, COUNT(*) FROM seekers GROUP BY stage')
+      pool.query('SELECT stage, COUNT(*) FROM seekers GROUP BY stage'),
+      pool.query('SELECT AVG(belief_score) as avg_belief FROM seekers')
     ]);
 
     const stages: Record<string, number> = {};
@@ -432,15 +459,21 @@ export async function getGlobalStats(): Promise<any> {
       stages[row.stage] = parseInt(row.count, 10);
     });
 
+    const totalSeekers = parseInt(seekersResult.rows[0].count, 10);
+    const totalConversions = parseInt(conversionsResult.rows[0].count, 10);
+    const avgBelief = parseFloat(avgBeliefResult.rows[0].avg_belief) || 0;
+
     return {
-      total_seekers: parseInt(seekersResult.rows[0].count, 10),
+      total_seekers: totalSeekers,
       total_conversations: parseInt(conversationsResult.rows[0].count, 10),
-      total_conversions: parseInt(conversionsResult.rows[0].count, 10),
-      stages
+      total_conversions: totalConversions,
+      stages,
+      avg_belief: Math.round(avgBelief * 100),  // As percentage
+      conversion_rate: totalSeekers > 0 ? Math.round((totalConversions / totalSeekers) * 100) : 0
     };
   } catch (error) {
     console.error('Error getting global stats:', error);
-    return { total_seekers: 0, total_conversations: 0, total_conversions: 0, stages: {} };
+    return { total_seekers: 0, total_conversations: 0, total_conversions: 0, stages: {}, avg_belief: 0, conversion_rate: 0 };
   }
 }
 
