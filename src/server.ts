@@ -7,6 +7,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import router from './api/routes.js';
@@ -16,6 +18,10 @@ import { initializeCombatService } from './services/agentCombatService.js';
 import { initializeAllianceService } from './services/allianceService.js';
 import { initializeAutonomousAgent } from './services/autonomousAgentService.js';
 import { initDb } from './db/jsonDb.js';
+
+// ES Module dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables
 dotenv.config();
@@ -82,6 +88,10 @@ export function broadcastToDebate(debateId: string, message: any): void {
 // Middleware
 app.use(cors());
 
+// Serve static files from public directory
+const publicPath = path.join(__dirname, '..', 'public');
+app.use(express.static(publicPath));
+
 // Custom JSON parser with better error handling
 app.use(express.json({
   verify: (req, res, buf) => {
@@ -143,8 +153,13 @@ if (apiKey) {
 app.use('/', router);
 app.use('/', agentRouter);
 
-// Root endpoint
+// Root endpoint - serve frontend
 app.get('/', (_req, res) => {
+  res.sendFile(path.join(publicPath, 'index.html'));
+});
+
+// API info endpoint
+app.get('/api', (_req, res) => {
   res.json({
     name: 'Founder Chat API - religion.fun Hackathon',
     description: 'Religious persuasion agent for Chainism on Monad',
