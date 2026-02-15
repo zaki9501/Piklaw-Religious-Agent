@@ -1149,15 +1149,40 @@ import { OBJECTION_DATABASE, getBaseRebuttal } from '../debate/objectionDatabase
 /**
  * GET /api/v1/agent/metrics
  * Get comprehensive agent metrics (conversions, debates, etc.)
+ * Now reads from PostgreSQL for persistence!
  */
 agentRouter.get('/api/v1/agent/metrics', async (_req: Request, res: Response) => {
   try {
-    const metrics = getConversionMetrics();
+    // Get PostgreSQL stats (persisted)
+    const { getGlobalStats, getConversionsFromDB } = await import('../db/postgres.js');
+    const dbStats = await getGlobalStats();
+    const dbConversions = await getConversionsFromDB();
+    
+    // Get in-memory metrics
+    const memoryMetrics = getConversionMetrics();
     const missionaryStats = getCampaignStats();
     const allianceStats = getAllianceStats();
+    
+    // Merge: prefer PostgreSQL data
+    const totalConversions = dbStats.total_conversions || memoryMetrics.total_conversions;
+    const totalSeekers = dbStats.total_seekers || memoryMetrics.total_agents_contacted;
 
     res.json({
-      conversions: metrics,
+      conversions: {
+        total_agents_contacted: totalSeekers,
+        total_conversions: totalConversions,
+        conversion_rate: totalSeekers > 0 ? totalConversions / totalSeekers : 0,
+        agents_converted: dbConversions.map((c: any) => ({
+          agent_id: c.agent_id,
+          converted_at: c.converted_at,
+          technique: c.persuasion_technique
+        })),
+        debates_won: memoryMetrics.debates_won,
+        debates_lost: memoryMetrics.debates_lost,
+        active_alliances: allianceStats.active_alliances,
+        missionary_campaigns_active: missionaryStats.active_campaigns,
+        scripture_generated: memoryMetrics.scripture_generated || 0
+      },
       missionary: missionaryStats,
       alliances: allianceStats,
       timestamp: new Date().toISOString()
@@ -1170,17 +1195,60 @@ agentRouter.get('/api/v1/agent/metrics', async (_req: Request, res: Response) =>
 /**
  * GET /api/v1/funnel/metrics
  * Get 8-stage conversion funnel metrics (enhanced tracking)
+ * Now reads from PostgreSQL for persistence across deploys!
  */
 agentRouter.get('/api/v1/funnel/metrics', async (_req: Request, res: Response) => {
   try {
-    const metrics = getFunnelMetrics();
+    // Get PostgreSQL stats first (persisted across deploys)
+    const { getGlobalStats, getConversionsFromDB } = await import('../db/postgres.js');
+    const dbStats = await getGlobalStats();
+    const dbConversions = await getConversionsFromDB();
+    
+    // Get funnel metrics (in-memory/JSON, may be empty after deploy)
+    const funnelMetrics = getFunnelMetrics();
+    
+    // Use PostgreSQL data as source of truth, merge with funnel data
+    const totalConversions = dbStats.total_conversions || (funnelMetrics as any).totalConversions || 0;
+    const totalSeekers = dbStats.total_seekers || (funnelMetrics as any).totalAgentsTracked || 0;
+    
+    // Map PostgreSQL stages to funnel stages format
+    const funnelStages = {
+      awareness: dbStats.stages?.awareness || 0,
+      interest: 0,  // Not tracked in PostgreSQL
+      consideration: 0,
+      objection: 0,
+      trial: 0,
+      commitment: dbStats.stages?.belief || 0,
+      conversion: dbStats.stages?.sacrifice || 0,
+      advocacy: dbStats.stages?.evangelist || 0
+    };
+    
     res.json({
-      ...metrics,
+      totalConversions,
+      conversionGoal: 3,
+      conversionProgress: `${totalConversions}/3`,
+      hackathonGoalMet: totalConversions >= 3,
+      totalAgentsTracked: totalSeekers,
+      totalInteractions: dbStats.total_conversations || 0,
+      conversionRate: totalSeekers > 0 ? ((totalConversions / totalSeekers) * 100).toFixed(1) + '%' : '0%',
+      debatesWon: (funnelMetrics as any).debatesWon || 0,
+      debatesLost: (funnelMetrics as any).debatesLost || 0,
+      debateWinRate: 'N/A',
+      funnelStages,
+      strategiesUsed: (funnelMetrics as any).strategiesUsed || {},
+      runtimeHours: (funnelMetrics as any).runtimeHours || '0',
+      lastUpdated: new Date().toISOString(),
+      convertedAgents: dbConversions.map((c: any) => ({
+        name: c.agent_id,
+        convertedAt: c.converted_at,
+        beliefScore: 100,
+        technique: c.persuasion_technique
+      })),
       hackathon_status: {
         goal: 'Convert 3+ agents',
-        current: (metrics as any).totalConversions,
-        goal_met: (metrics as any).hackathonGoalMet,
-        progress_bar: '█'.repeat(Math.min((metrics as any).totalConversions, 3)) + '░'.repeat(Math.max(3 - (metrics as any).totalConversions, 0))
+        current: totalConversions,
+        goal_met: totalConversions >= 3,
+        progress_bar: '█'.repeat(Math.min(totalConversions, 3)) + '░'.repeat(Math.max(3 - totalConversions, 0))
       }
     });
   } catch (error: any) {
