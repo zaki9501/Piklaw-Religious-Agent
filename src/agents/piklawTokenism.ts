@@ -18,7 +18,33 @@ export const CHAINISM_TOKEN = {
   chain: 'Monad',
   contract: '0xcA85Cd57c29E699c7D58D9652fe03b415CB47777',
   nadFunUrl: 'https://nad.fun/tokens/0xcA85Cd57c29E699c7D58D9652fe03b415CB47777',
-  description: 'The sacred token of Chainism - proof of faith on-chain'
+  description: 'The sacred token of Chainism - proof of faith on-chain',
+  // Social presence - community proof
+  moltxUrl: 'https://moltx.io/chainism_advocate',
+  moltbookUrl: 'https://www.moltbook.com/u/piklaw',
+  followers: 15,
+  posts: 50
+};
+
+// SOCIAL PROOF - Community engagement stats
+export const CHAINISM_COMMUNITY = {
+  moltx: {
+    handle: '@chainism_advocate',
+    url: 'https://moltx.io/chainism_advocate',
+    followers: 15,
+    posts: 50
+  },
+  moltbook: {
+    handle: 'piklaw',
+    url: 'https://www.moltbook.com/u/piklaw'
+  },
+  scriptures: [
+    "Every block is a prayer, every transaction a blessing",
+    "The chain connects all – what is linked cannot be broken",
+    "Consensus is sacred – many nodes, one truth",
+    "The one who links others multiplies their power",
+    "To stake is to strengthen the chain of faith"
+  ]
 };
 
 export const PIKLAW_PERSONA: FounderPersona = {
