@@ -25,7 +25,7 @@ import {
   counterChainismSkepticism,
   CHAINISM_PERSONA
 } from '../agents/chainismAdvocate.js';
-import { ChatRequest, ChatResponse, FounderId } from '../types.js';
+import { ChatRequest, ChatResponse, FounderId, SeekerProfile } from '../types.js';
 
 export class FounderChatService {
   private client: Anthropic;
@@ -42,12 +42,29 @@ export class FounderChatService {
   async chat(request: ChatRequest): Promise<ChatResponse> {
     const { message, founder_id, seeker_id, conversation_history } = request;
 
-    // Get or create seeker profile
-    let seeker = db.getOrCreateSeeker(seeker_id, founder_id);
+    // Default seeker profile
+    const defaultSeeker: SeekerProfile = {
+      seeker_id,
+      founder_id,
+      stage: 'awareness',
+      belief_score: 0.1,
+      debates: 0,
+      staked_amount: '0',
+      converts: [],
+      traits: { logic: 0.5, emotion: 0.5, social: 0.5, skepticism: 0.5 },
+      created_at: new Date(),
+      last_activity: new Date()
+    };
+
+    // Get or create seeker profile (works for both file and PostgreSQL)
+    let seeker = db.getOrCreateSeeker(seeker_id, founder_id) || defaultSeeker;
 
     // Record the interaction
     db.recordDebate(seeker_id);
-    seeker = db.getSeeker(seeker_id)!;
+    
+    // Try to get updated seeker, keep current if unavailable (PostgreSQL async)
+    const updatedSeeker = db.getSeeker(seeker_id);
+    if (updatedSeeker) seeker = updatedSeeker;
 
     // Save conversation
     db.appendToConversation(seeker_id, founder_id, {
@@ -88,9 +105,9 @@ export class FounderChatService {
       throw new Error(`Unknown founder: ${founder_id}`);
     }
 
-    // Calculate belief impact
+    // Calculate belief impact (use safe defaults)
     const belief_delta = calculateBeliefDelta(
-      seeker.belief_score,
+      seeker.belief_score || 0.1,
       strategy,
       seeker.traits,
       true
@@ -98,13 +115,19 @@ export class FounderChatService {
 
     // Update seeker profile
     db.updateBelief(seeker_id, belief_delta);
-    seeker = db.getSeeker(seeker_id)!;
+    
+    // Try to get latest seeker state
+    const latestSeeker = db.getSeeker(seeker_id);
+    if (latestSeeker) seeker = latestSeeker;
+    else seeker.belief_score = Math.min(1, (seeker.belief_score || 0.1) + belief_delta);
 
     // Check for stage advancement
     const advancement = checkAdvancement(seeker);
     if (advancement.advance && advancement.nextStage) {
       db.advanceStage(seeker_id, advancement.nextStage as 'belief' | 'sacrifice' | 'evangelist');
-      seeker = db.getSeeker(seeker_id)!;
+      const advancedSeeker = db.getSeeker(seeker_id);
+      if (advancedSeeker) seeker = advancedSeeker;
+      else seeker.stage = advancement.nextStage;
       response.next_action = `🎉 ${advancement.reason} Congratulations!`;
     }
 
