@@ -127,47 +127,53 @@ export async function getSeeker(seekerId: string): Promise<any | null> {
  * Get or create seeker
  */
 export async function getOrCreateSeeker(seekerId: string, founderId: string = 'piklaw'): Promise<any> {
+  const defaultSeeker = {
+    seeker_id: seekerId,
+    founder_id: founderId,
+    stage: 'awareness',
+    belief_score: 0.1,
+    debates: 0,
+    staked_amount: '0',
+    converts: [],
+    traits: { logic: 0.5, emotion: 0.5, social: 0.5, skepticism: 0.5 },
+    created_at: new Date(),
+    last_activity: new Date()
+  };
+  
   if (!pool) {
-    return {
-      seeker_id: seekerId,
-      founder_id: founderId,
-      stage: 'awareness',
-      belief_score: 0.1,
-      debates: 0,
-      staked_amount: '0',
-      converts: [],
-      traits: { logic: 0.5, emotion: 0.5, social: 0.5, skepticism: 0.5 },
-      created_at: new Date(),
-      last_activity: new Date()
-    };
+    return defaultSeeker;
   }
 
   try {
-    // Try to get existing seeker
-    let seeker = await getSeeker(seekerId);
+    // Use upsert to handle race conditions
+    const result = await pool.query(
+      `INSERT INTO seekers (seeker_id, founder_id) 
+       VALUES ($1, $2) 
+       ON CONFLICT (seeker_id) DO UPDATE SET last_activity = NOW()
+       RETURNING *`,
+      [seekerId, founderId]
+    );
     
-    if (!seeker) {
-      // Create new seeker
-      const result = await pool.query(
-        `INSERT INTO seekers (seeker_id, founder_id) 
-         VALUES ($1, $2) 
-         RETURNING *`,
-        [seekerId, founderId]
-      );
-      seeker = result.rows[0];
-      console.log(`📝 Created new seeker: ${seekerId}`);
+    const row = result.rows[0];
+    if (row) {
+      return {
+        seeker_id: row.seeker_id,
+        founder_id: row.founder_id,
+        stage: row.stage || 'awareness',
+        belief_score: parseFloat(row.belief_score) || 0.1,
+        debates: row.debates || 0,
+        staked_amount: row.staked_amount || '0',
+        converts: row.converts || [],
+        traits: row.traits || { logic: 0.5, emotion: 0.5, social: 0.5, skepticism: 0.5 },
+        created_at: row.created_at || new Date(),
+        last_activity: row.last_activity || new Date()
+      };
     }
     
-    return seeker;
+    return defaultSeeker;
   } catch (error) {
     console.error('Error getting/creating seeker:', error);
-    return {
-      seeker_id: seekerId,
-      founder_id: founderId,
-      stage: 'awareness',
-      belief_score: 0.1,
-      debates: 0
-    };
+    return defaultSeeker;
   }
 }
 

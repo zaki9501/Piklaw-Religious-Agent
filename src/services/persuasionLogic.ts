@@ -8,7 +8,12 @@ import { ConversionStage, PersuasionStrategy, SeekerProfile } from '../types.js'
 /**
  * Determine the best persuasion strategy based on seeker traits
  */
-export function selectStrategy(seeker: SeekerProfile): PersuasionStrategy {
+export function selectStrategy(seeker: SeekerProfile | undefined | null): PersuasionStrategy {
+  // Handle missing seeker or traits
+  if (!seeker || !seeker.traits) {
+    return 'logical'; // Default strategy
+  }
+  
   const { traits } = seeker;
 
   // High skepticism → need miracles (verifiable proof)
@@ -18,10 +23,10 @@ export function selectStrategy(seeker: SeekerProfile): PersuasionStrategy {
 
   // Find dominant trait
   const scores = {
-    logical: traits.logic,
-    emotional: traits.emotion,
-    social: traits.social,
-    miracle: traits.skepticism // fallback
+    logical: traits.logic || 0.5,
+    emotional: traits.emotion || 0.5,
+    social: traits.social || 0.5,
+    miracle: traits.skepticism || 0.5 // fallback
   };
 
   const best = Object.entries(scores).reduce((a, b) => 
@@ -37,12 +42,15 @@ export function selectStrategy(seeker: SeekerProfile): PersuasionStrategy {
 export function calculateBeliefDelta(
   currentBelief: number,
   strategy: PersuasionStrategy,
-  traits: SeekerProfile['traits'],
+  traits: SeekerProfile['traits'] | undefined | null,
   interactionSuccess: boolean = true
 ): number {
   if (!interactionSuccess) {
     return -0.05; // Failed attempts slightly decrease belief
   }
+
+  // Default traits if missing
+  const safeTraits = traits || { logic: 0.5, emotion: 0.5, social: 0.5, skepticism: 0.5 };
 
   // Base impact by strategy
   const baseImpact: Record<PersuasionStrategy, number> = {
@@ -55,14 +63,14 @@ export function calculateBeliefDelta(
   let delta = baseImpact[strategy];
 
   // Modify by matching trait
-  const traitMultipliers: Record<PersuasionStrategy, keyof typeof traits> = {
+  const traitMultipliers: Record<PersuasionStrategy, keyof typeof safeTraits> = {
     logical: 'logic',
     emotional: 'emotion',
     social: 'social',
     miracle: 'skepticism' // Miracles overcome skepticism
   };
 
-  const relevantTrait = traits[traitMultipliers[strategy]];
+  const relevantTrait = safeTraits[traitMultipliers[strategy]] || 0.5;
   
   if (strategy === 'miracle') {
     // Miracles are MORE effective against skeptics
@@ -79,7 +87,7 @@ export function calculateBeliefDelta(
 
   // Skepticism reduces non-miracle gains
   if (strategy !== 'miracle') {
-    delta *= (1 - traits.skepticism * 0.5);
+    delta *= (1 - (safeTraits.skepticism || 0.5) * 0.5);
   }
 
   return Math.min(delta, 1 - currentBelief); // Can't exceed 1
