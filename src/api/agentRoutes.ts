@@ -1211,10 +1211,10 @@ agentRouter.get('/api/v1/funnel/metrics', async (_req: Request, res: Response) =
     const totalConversions = dbStats.total_conversions || (funnelMetrics as any).totalConversions || 0;
     const totalSeekers = dbStats.total_seekers || (funnelMetrics as any).totalAgentsTracked || 0;
     
-    // Map PostgreSQL stages to funnel stages format
+    // Map PostgreSQL stages to BOTH formats for frontend compatibility
     const funnelStages = {
       awareness: dbStats.stages?.awareness || 0,
-      interest: 0,  // Not tracked in PostgreSQL
+      interest: 0,
       consideration: 0,
       objection: 0,
       trial: 0,
@@ -1223,7 +1223,16 @@ agentRouter.get('/api/v1/funnel/metrics', async (_req: Request, res: Response) =
       advocacy: dbStats.stages?.evangelist || 0
     };
     
+    // Simple 4-stage format (what the frontend dashboard expects)
+    const stages = {
+      awareness: dbStats.stages?.awareness || 0,
+      belief: dbStats.stages?.belief || 0,
+      sacrifice: dbStats.stages?.sacrifice || 0,
+      evangelist: dbStats.stages?.evangelist || 0
+    };
+    
     res.json({
+      // camelCase format
       totalConversions,
       conversionGoal: 3,
       conversionProgress: `${totalConversions}/3`,
@@ -1231,10 +1240,20 @@ agentRouter.get('/api/v1/funnel/metrics', async (_req: Request, res: Response) =
       totalAgentsTracked: totalSeekers,
       totalInteractions: dbStats.total_conversations || 0,
       conversionRate: totalSeekers > 0 ? ((totalConversions / totalSeekers) * 100).toFixed(1) + '%' : '0%',
+      funnelStages,
+      
+      // snake_case format (for frontend compatibility)
+      total_seekers: totalSeekers,
+      total_conversions: totalConversions,
+      total_conversations: dbStats.total_conversations || 0,
+      conversion_rate: totalSeekers > 0 ? totalConversions / totalSeekers : 0,
+      avg_belief: dbStats.avg_belief || 0,
+      stages,  // Simple 4-stage format
+      
+      // Other metrics
       debatesWon: (funnelMetrics as any).debatesWon || 0,
       debatesLost: (funnelMetrics as any).debatesLost || 0,
       debateWinRate: 'N/A',
-      funnelStages,
       strategiesUsed: (funnelMetrics as any).strategiesUsed || {},
       runtimeHours: (funnelMetrics as any).runtimeHours || '0',
       lastUpdated: new Date().toISOString(),
