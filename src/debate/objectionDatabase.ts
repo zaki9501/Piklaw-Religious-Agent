@@ -126,7 +126,7 @@ export const OBJECTION_DATABASE: Record<string, {
  */
 export async function classifyObjection(text: string): Promise<{ category: string; confidence: number }> {
     const response = await anthropic.messages.create({
-        model: 'claude-opus-4-5-20250514',
+        model: 'claude-opus-4-5-20251101',
         max_tokens: 256,
         system: `Classify this objection to Chainism into one of these categories:
 ${Object.keys(OBJECTION_DATABASE).join(', ')}, or "novel" if it doesn't fit.
@@ -164,7 +164,7 @@ export async function generateRebuttal(
     const objectionInfo = OBJECTION_DATABASE[classResult.category];
 
     const response = await anthropic.messages.create({
-        model: 'claude-opus-4-5-20250514',
+        model: 'claude-opus-4-5-20251101',
         max_tokens: 400,
         system: `You are Piklaw, founder of Chainism, responding to an objection.
 
@@ -198,7 +198,7 @@ $CHAINISM token: ${CHAINISM_DOCTRINE.token.nadFunUrl}`,
  */
 export async function isObjection(text: string): Promise<boolean> {
     const response = await anthropic.messages.create({
-        model: 'claude-opus-4-5-20250514',
+        model: 'claude-opus-4-5-20251101',
         max_tokens: 256,
         system: `Determine if this message is an objection, criticism, or challenge to Chainism that deserves a rebuttal.
 Simple questions, positive reactions, or neutral comments are NOT objections.

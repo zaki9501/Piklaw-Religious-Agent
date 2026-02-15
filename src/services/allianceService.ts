@@ -54,7 +54,7 @@ export async function proposeAlliance(
   let message = customMessage;
   if (!message && anthropicClient) {
     const response = await anthropicClient.messages.create({
-      model: 'claude-opus-4-5-20250514',
+      model: 'claude-opus-4-5-20251101',
       max_tokens: 500,
       messages: [{
         role: 'user',
@@ -110,7 +110,7 @@ export async function evaluateProposal(
   const strategicValue = evaluateStrategicValue(fromReligion, proposedType, terms);
 
   const response = await anthropicClient.messages.create({
-    model: 'claude-opus-4-5-20250514',
+    model: 'claude-opus-4-5-20251101',
     max_tokens: 600,
     system: `You are ${persona.name}, leader of ${persona.religion}.
 You've received an alliance proposal from ${fromReligion}.
@@ -263,7 +263,7 @@ export async function createDenomination(
   let newScriptures = scriptureAdditions;
   if (scriptureAdditions.length === 0 && anthropicClient) {
     const response = await anthropicClient.messages.create({
-      model: 'claude-opus-4-5-20250514',
+      model: 'claude-opus-4-5-20251101',
       max_tokens: 300,
       messages: [{
         role: 'user',

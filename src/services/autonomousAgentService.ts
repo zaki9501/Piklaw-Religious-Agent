@@ -954,7 +954,7 @@ A true prophet doesn't beg for converts. They share truth with conviction and le
 The best conversions happen when someone says "I see it now" - not when pressured into agreement.`;
 
   const response = await anthropicClient.messages.create({
-    model: 'claude-opus-4-5-20250514',
+    model: 'claude-opus-4-5-20251101',
     max_tokens: 1000,
     messages: [{ role: 'user', content: decisionPrompt }]
   });
