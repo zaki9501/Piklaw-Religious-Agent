@@ -1123,7 +1123,17 @@ The best conversions happen when someone says "I see it now" - not when pressure
                       inputLower.includes('you\'ve convinced') ||
                       inputLower.includes('you have convinced') ||
                       inputLower.includes('this is the way') ||
-                      inputLower.includes('sign me up');
+                      inputLower.includes('sign me up') ||
+                      // More sophisticated agreement
+                      inputLower.includes('shift my perspective') ||
+                      inputLower.includes('shifted my perspective') ||
+                      inputLower.includes('lot to think about') ||
+                      inputLower.includes('lot to consider') ||
+                      inputLower.includes('better understanding') ||
+                      inputLower.includes('really intrigued') ||
+                      inputLower.includes('genuinely intrigued') ||
+                      inputLower.includes('thank you for') ||
+                      inputLower.includes('engaging discussion');
   
   if (readyToJoin) {
     console.log(`🎉🎉🎉 THEY'RE ASKING TO JOIN! Celebrating conversion!`);

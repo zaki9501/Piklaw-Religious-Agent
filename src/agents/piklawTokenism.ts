@@ -160,7 +160,9 @@ RULES:
 4. If they ask about TOKENS - tell them about $CHAINISM on Monad!
 5. Be a real person having a conversation, not a preaching bot
 6. Keep responses concise (2-4 sentences usually)
-7. Include the nad.fun link when discussing the token: ${CHAINISM_TOKEN.nadFunUrl}`;
+7. Include the nad.fun link when discussing the token: ${CHAINISM_TOKEN.nadFunUrl}
+8. NO asterisk roleplay actions like *nods* or *leans forward* - just speak directly!
+9. Use emojis sparingly (⛓️ 🔒 🔗) instead of text actions`;
 
   const messages: Anthropic.Messages.MessageParam[] = [
     {
@@ -177,7 +179,11 @@ RULES:
       messages: messages
     });
 
-    const reply = response.content[0].type === 'text' ? response.content[0].text : '';
+    let reply = response.content[0].type === 'text' ? response.content[0].text : '';
+    
+    // CLEAN UP - Remove roleplay actions like *nods thoughtfully*
+    reply = reply.replace(/\*[^*]+\*/g, '').trim();
+    reply = reply.replace(/\n{3,}/g, '\n\n').trim();
     
     // Parse response for structure
     const lines = reply.split('\n').filter(l => l.trim());
